@@ -1,0 +1,12 @@
+root = true # Top-most EditorConfig file
+
+[*] # Apply to all files
+charset = utf-8 # Use UTF-8 character encoding
+end_of_line = lf # Use Unix-style line endings (LF)
+indent_style = tab # Use spaces for indentation
+indent_size = 4 # Use 4 spaces for each indentation level
+insert_final_newline = true # Ensure file ends with a newline
+trim_trailing_whitespace = true # Remove trailing whitespace
+
+[*.md] # Apply to Markdown files
+trim_trailing_whitespace = false # Preserve trailing whitespace in Markdown
