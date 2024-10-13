@@ -1,0 +1,56 @@
+services:
+    service-a:
+        build:
+            context: ./serviceA
+            dockerfile: Dockerfile
+        container_name: service-a
+        ports:
+            - "8080:8080"
+        depends_on:
+            - service-b
+            - otel-collector
+        environment:
+            - SERVICE_B_URL=http://service-b:8080
+        networks:
+            - zipcode-temperature-tracing
+
+    service-b:
+        build:
+            context: ./serviceB
+            dockerfile: Dockerfile
+        container_name: service-b
+        ports:
+            - "8081:8080"
+        depends_on:
+            - otel-collector
+        environment:
+            - API_KEY=${WEATHER_API_KEY}
+        networks:
+            - zipcode-temperature-tracing
+
+    otel-collector:
+        image: otel/opentelemetry-collector:latest
+        command: [ "--config=/etc/otel-collector-config.yaml" ]
+        volumes:
+            - ./config/otel/config.yaml:/etc/otel-collector-config.yaml:ro
+        ports:
+            - "4320:4317"
+            - "4321:4318"
+        networks:
+            - zipcode-temperature-tracing
+
+    zipkin:
+        image: openzipkin/zipkin
+        ports:
+            - "9411:9411"
+        depends_on:
+            - otel-collector
+        networks:
+            - zipcode-temperature-tracing
+
+volumes:
+    otel-collector-config:
+
+networks:
+    zipcode-temperature-tracing:
+        driver: bridge
