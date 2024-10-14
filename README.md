@@ -24,19 +24,24 @@ celsius, fahrenheit e kelvin) juntamente com a cidade. Esse sistema deverá impl
 - Receber um CEP válido de 8 dígitos
 - Realizar a pesquisa do CEP e encontrar o nome da localização
 - Retornar as temperaturas formatadas em: Celsius, Fahrenheit, Kelvin juntamente com o nome da localização
-- Cenários de resposta:
-	- Sucesso:
-		- Código HTTP: 200
-		- Response Body:
-	  ``` json
-	  {"city: "São Paulo", "temp_C": 28.5, "temp_F": 28.5, "temp_K": 28.5 }
-	  ```
-	- CEP inválido (com formato correto):
-		- Código HTTP: 422
-		- Mensagem: "invalid zipcode"
-	- CEP não encontrado:
-		- Código HTTP: 404
-		- Mensagem: "can not find zipcode"
+	- Cenários de resposta:
+		- Sucesso:
+			- Código HTTP: 200
+			- Response Body:
+		  ``` json
+				  {
+					"city": "São Paulo",
+					"temp_C": 28.5,
+					"temp_F": 28.5,
+					"temp_K": 28.5
+				  }
+		  ```
+		- CEP inválido (com formato correto):
+			- Código HTTP: 422
+			- Mensagem: "invalid zipcode"
+		- CEP não encontrado:
+			- Código HTTP: 404
+			- Mensagem: "can not find zipcode"
 
 ### Implementação OTEL + Zipkin:
 
