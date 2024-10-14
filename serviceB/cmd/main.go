@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go.opentelemetry.io/otel/propagation"
 	"log"
 	"net/http"
 	"net/url"
@@ -33,11 +34,12 @@ func main() {
 	}
 	defer func() { _ = tp.Shutdown(ctx) }()
 
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+
 	tracer = tp.Tracer("service-b")
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		handleRequest(w, r.WithContext(ctx))
-	})
+	http.HandleFunc("/", handleRequest)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -127,19 +129,20 @@ func makeHTTPRequest[T any](ctx context.Context, uri string, method string) (T, 
 	return result, nil, http.StatusOK
 }
 
-func handleRequest(w http.ResponseWriter, r *http.Request) {
-	ctx, span := tracer.Start(r.Context(), "handleRequest")
+func handleRequest(responseWriter http.ResponseWriter, request *http.Request) {
+	ctx := otel.GetTextMapPropagator().Extract(request.Context(), propagation.HeaderCarrier(request.Header))
+	ctx, span := tracer.Start(ctx, "handleRequest-sb", trace.WithSpanKind(trace.SpanKindServer))
 	defer span.End()
 
-	cep := r.URL.Query().Get("cep")
+	cep := request.URL.Query().Get("cep")
 	span.SetAttributes(attribute.String("cep", cep))
 
 	city, err, status := fetchCityFromCEP(ctx, cep)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		w.WriteHeader(status)
-		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
+		responseWriter.WriteHeader(status)
+		json.NewEncoder(responseWriter).Encode(map[string]string{"message": err.Error()})
 		return
 	}
 
@@ -147,8 +150,8 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		w.WriteHeader(status)
-		json.NewEncoder(w).Encode(map[string]string{"message": err.Error()})
+		responseWriter.WriteHeader(status)
+		json.NewEncoder(responseWriter).Encode(map[string]string{"message": err.Error()})
 		return
 	}
 
@@ -159,9 +162,9 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		Kelvin:     model.Float64Marshal(temperature + 273),
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tempResponse)
+	responseWriter.WriteHeader(http.StatusOK)
+	responseWriter.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(responseWriter).Encode(tempResponse)
 }
 
 func initTracer(serviceName string) (*sdktrace.TracerProvider, error) {

@@ -12,8 +12,8 @@ services:
             - zipkin
         environment:
             - SERVICE_B_URL=http://service-b:8080
+            - OTEL_SERVICE_NAME=service-a
             - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
-            - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
         networks:
             - zipcode-temperature-tracing
 
@@ -29,6 +29,7 @@ services:
             - zipkin
         environment:
             - API_KEY=${WEATHER_API_KEY}
+            - OTEL_SERVICE_NAME=service-b
             - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
         networks:
             - zipcode-temperature-tracing
