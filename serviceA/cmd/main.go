@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/propagation"
@@ -62,6 +63,11 @@ func sendRequestToB(ctx context.Context, cep string) (TemperatureResponse, error
 	ctx, span := tracer.Start(ctx, "sendRequestToB", trace.WithSpanKind(trace.SpanKindClient))
 	defer span.End()
 
+	span.SetAttributes(
+		attribute.String("cep", cep),
+		attribute.String("service", "ServiceA"),
+	)
+
 	serviceBURL := os.Getenv("SERVICE_B_URL")
 	if serviceBURL == "" {
 		serviceBURL = "http://localhost:8081"
@@ -78,6 +84,7 @@ func sendRequestToB(ctx context.Context, cep string) (TemperatureResponse, error
 
 	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
 
+	span.AddEvent("Sending request to Service B")
 	resp, err := http.DefaultClient.Do(req)
 
 	if err != nil {
@@ -85,6 +92,8 @@ func sendRequestToB(ctx context.Context, cep string) (TemperatureResponse, error
 		return TemperatureResponse{}, fmt.Errorf("error sending request to Service B: %w", err), http.StatusInternalServerError
 	}
 	defer resp.Body.Close()
+
+	span.AddEvent("Received response from Service B")
 
 	if resp.StatusCode != http.StatusOK {
 		var errorResponse struct {
@@ -124,9 +133,12 @@ func handleRequest(responseWriter http.ResponseWriter, request *http.Request) {
 		return
 	}
 
+	span.SetAttributes(attribute.String("cep", requestInput.CEP))
+
 	responseWriter.Header().Add("Content-Type", "application/json")
 
 	if !isValidZipCode(requestInput.CEP) {
+		span.SetStatus(codes.Error, "invalid zipcode")
 		responseWriter.WriteHeader(http.StatusUnprocessableEntity)
 		json.NewEncoder(responseWriter).Encode(map[string]string{"message": "invalid zipcode"})
 		return
@@ -136,10 +148,12 @@ func handleRequest(responseWriter http.ResponseWriter, request *http.Request) {
 
 	if err != nil {
 		responseWriter.WriteHeader(status)
+		span.SetStatus(codes.Error, err.Error())
 		json.NewEncoder(responseWriter).Encode(map[string]string{"message": err.Error()})
 		return
 	}
 
+	span.SetStatus(codes.Ok, "Completed")
 	responseWriter.WriteHeader(status)
 	json.NewEncoder(responseWriter).Encode(temperatureResponse)
 
