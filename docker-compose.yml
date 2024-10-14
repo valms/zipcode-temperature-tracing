@@ -9,8 +9,11 @@ services:
         depends_on:
             - service-b
             - otel-collector
+            - zipkin
         environment:
             - SERVICE_B_URL=http://service-b:8080
+            - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+            - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
         networks:
             - zipcode-temperature-tracing
 
@@ -23,8 +26,10 @@ services:
             - "8081:8080"
         depends_on:
             - otel-collector
+            - zipkin
         environment:
             - API_KEY=${WEATHER_API_KEY}
+            - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
         networks:
             - zipcode-temperature-tracing
 
@@ -34,8 +39,8 @@ services:
         volumes:
             - ./config/otel/config.yaml:/etc/otel-collector-config.yaml:ro
         ports:
-            - "4320:4317"
-            - "4321:4318"
+            - "4318:4318"
+            - "4317:4317"
         networks:
             - zipcode-temperature-tracing
 
@@ -47,9 +52,6 @@ services:
             - otel-collector
         networks:
             - zipcode-temperature-tracing
-
-volumes:
-    otel-collector-config:
 
 networks:
     zipcode-temperature-tracing:
