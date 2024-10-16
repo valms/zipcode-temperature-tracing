@@ -61,7 +61,6 @@ celsius, fahrenheit e kelvin) juntamente com a cidade. Esse sistema deverá impl
 ├── README.md
 └── docker-compose.yml
 ```
-
 ## Pré-requisitos
 
 - Docker
